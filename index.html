@@ -77,12 +77,15 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // ===== Pybricks BLE 协议 =====
+        // 尝试方案1: Pybricks命令服务 / 方案2: NUS裸通道
         const PYB_SERVICE = "c5f50001-8280-46da-89f4-6d8051e4aeef";
         const PYB_COMMAND = "c5f50002-8280-46da-89f4-6d8051e4aeef";
+        const NUS_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const NUS_TX      = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+        const NUS_RX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
         let device = null;
-        let cmdChar = null;
+        let txChar = null;      // 用于发送的通道
 
         function log(msg) {
             console.log("[电梯]", msg);
@@ -120,7 +123,7 @@
 
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: [PYB_SERVICE]
+                    optionalServices: [PYB_SERVICE, NUS_SERVICE]
                 });
                 log("📱 已选择设备: " + (device.name || "(未知名称)"));
                 log("  设备ID: " + device.id);
@@ -129,36 +132,55 @@
                 const server = await device.gatt.connect();
                 log("✅ GATT连接成功");
 
-                log("🔍 查找Pybricks服务...");
-                const service = await server.getPrimaryService(PYB_SERVICE);
-                log("✅ 找到服务: " + PYB_SERVICE);
+                // 尝试方案1: NUS 裸通道（推荐，数据直通stdin）
+                try {
+                    log("🔍 尝试NUS服务...");
+                    const nus = await server.getPrimaryService(NUS_SERVICE);
+                    log("✅ 找到NUS服务");
 
-                log("🔍 查找命令特征...");
-                cmdChar = await service.getCharacteristic(PYB_COMMAND);
-                log("✅ 找到命令特征: " + PYB_COMMAND);
-                log("  特征属性: " + JSON.stringify({
-                    write: cmdChar.properties.write,
-                    writeWithoutResponse: cmdChar.properties.writeWithoutResponse,
-                    notify: cmdChar.properties.notify,
-                }));
+                    txChar = await nus.getCharacteristic(NUS_TX);
+                    log("✅ NUS TX特征就绪, 属性: " + JSON.stringify({
+                        write: txChar.properties.write,
+                        writeWithoutResponse: txChar.properties.writeWithoutResponse,
+                    }));
 
-                // 订阅通知（关键！）
-                if (cmdChar.properties.notify) {
-                    log("📡 订阅通知...");
-                    await cmdChar.startNotifications();
-                    cmdChar.addEventListener("characteristicvaluechanged", (e) => {
-                        const data = new Uint8Array(e.target.value.buffer);
-                        log("📩 收到数据: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
-                    });
-                    log("✅ 通知订阅成功");
-                } else {
-                    log("⚠ 命令特征不支持通知");
+                    // 订阅RX用于调试
+                    const rxChar = await nus.getCharacteristic(NUS_RX);
+                    if (rxChar.properties.notify) {
+                        await rxChar.startNotifications();
+                        rxChar.addEventListener("characteristicvaluechanged", (e) => {
+                            const data = new Uint8Array(e.target.value.buffer);
+                            log("📩 NUS收到: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
+                        });
+                    }
+                    log("🎯 使用NUS裸通道（无需协议前缀）");
+
+                } catch (e1) {
+                    log("⚠ NUS不可用: " + e1.message);
+                    log("🔍 回退到Pybricks命令服务...");
+
+                    const pyb = await server.getPrimaryService(PYB_SERVICE);
+                    txChar = await pyb.getCharacteristic(PYB_COMMAND);
+                    log("✅ Pybricks命令特征就绪");
+                    log("  属性: " + JSON.stringify({
+                        write: txChar.properties.write,
+                        writeWithoutResponse: txChar.properties.writeWithoutResponse,
+                        notify: txChar.properties.notify,
+                    }));
+
+                    if (txChar.properties.notify) {
+                        await txChar.startNotifications();
+                        txChar.addEventListener("characteristicvaluechanged", (e) => {
+                            const data = new Uint8Array(e.target.value.buffer);
+                            log("📩 PYB收到: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
+                        });
+                    }
+                    log("🎯 使用Pybricks命令服务（带协议前缀）");
                 }
 
                 device.addEventListener("gattserverdisconnected", onDisconnect);
-
                 setConnected(true);
-                log("🎉 一切就绪，可以发送指令");
+                log("🎉 一切就绪");
                 toast("已连接 ✅");
 
             } catch (e) {
@@ -168,20 +190,23 @@
             }
         }
 
+        // txChar 可能是 NUS TX 或 PYB Command，根据实际通道决定发送格式
+        let useNus = true;  // connect()中会更新
+
         async function sendFloor(n) {
-            if (!cmdChar) {
-                log("❌ 未连接，无法发送");
-                return;
-            }
+            if (!txChar) { log("❌ 未连接"); return; }
             try {
-                // Pybricks写stdin: [0x06, 数据字节] (不需要长度头)
-                const cmd = new Uint8Array([0x06, 0x30 + n]);
-                log("📤 发送: " + Array.from(cmd).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " (目标: " + n + "楼)");
+                const data = new Uint8Array([0x30 + n]);
+                log("📤 发送: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " (" + String.fromCharCode(0x30+n) + " = " + n + "楼)");
 
-                // 此特征只支持 writeValue (带响应)，不支持无响应写入
-                await cmdChar.writeValue(cmd);
+                // NUS 裸通道：直接写原始字节，数据直通stdin
+                if (txChar.properties.writeWithoutResponse) {
+                    await txChar.writeValueWithoutResponse(data);
+                } else {
+                    await txChar.writeValue(data);
+                }
+
                 log("✅ 发送完成");
-
                 toast((n === 1 ? "🟣" : n === 2 ? "⚪" : "⚫") + " 去 " + n + " 楼");
 
             } catch (e) {
