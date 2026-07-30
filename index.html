@@ -68,8 +68,15 @@ async function connect(){
     const pyb=await srv.getPrimaryService(PYB_SVC);
     cmd=await pyb.getCharacteristic(PYB_CMD);
 
-    // 订阅通知（握手）
-    if(cmd.properties.notify) await cmd.startNotifications();
+    // 订阅通知（握手+接收回显）
+    if(cmd.properties.notify){
+      await cmd.startNotifications();
+      cmd.addEventListener("characteristicvaluechanged",(e)=>{
+        const d=new Uint8Array(e.target.value.buffer);
+        const txt=new TextDecoder().decode(d);
+        console.log("[HUB]",txt.trim());
+      });
+    }
 
     dev.addEventListener("gattserverdisconnected",()=>{setOk(false);toast("已断开")});
     setOk(true);
