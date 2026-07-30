@@ -85,7 +85,8 @@
         const NUS_RX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
         let device = null;
-        let txChar = null;      // 用于发送的通道
+        let txChar = null;
+        let useNus = false;   // NUS裸通道 vs Pybricks命令特征
 
         function log(msg) {
             console.log("[电梯]", msg);
@@ -132,50 +133,38 @@
                 const server = await device.gatt.connect();
                 log("✅ GATT连接成功");
 
-                // 尝试方案1: NUS 裸通道（推荐，数据直通stdin）
+                // 第1步：必须连 Pybricks 命令服务 + 订阅通知（握手）
+                //         集线器收到订阅后才会停止蓝牙闪烁、开始接受数据
+                log("🔍 第1步: 握手 - Pybricks命令服务...");
+                const pyb = await server.getPrimaryService(PYB_SERVICE);
+                const pybCmd = await pyb.getCharacteristic(PYB_COMMAND);
+                log("✅ Pybricks命令特征: " + JSON.stringify({
+                    write: pybCmd.properties.write,
+                    writeWithoutResponse: pybCmd.properties.writeWithoutResponse,
+                    notify: pybCmd.properties.notify,
+                }));
+
+                if (pybCmd.properties.notify) {
+                    await pybCmd.startNotifications();
+                    pybCmd.addEventListener("characteristicvaluechanged", (e) => {
+                        const data = new Uint8Array(e.target.value.buffer);
+                        log("📩 集线器: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
+                    });
+                    log("✅ 握手完成（通知已订阅）");
+                }
+
+                // 第2步：发送走 NUS 裸通道（数据直通stdin，无需协议前缀）
                 try {
-                    log("🔍 尝试NUS服务...");
+                    log("🔍 第2步: 数据通道 - NUS...");
                     const nus = await server.getPrimaryService(NUS_SERVICE);
-                    log("✅ 找到NUS服务");
-
                     txChar = await nus.getCharacteristic(NUS_TX);
-                    log("✅ NUS TX特征就绪, 属性: " + JSON.stringify({
-                        write: txChar.properties.write,
-                        writeWithoutResponse: txChar.properties.writeWithoutResponse,
-                    }));
-
-                    // 订阅RX用于调试
-                    const rxChar = await nus.getCharacteristic(NUS_RX);
-                    if (rxChar.properties.notify) {
-                        await rxChar.startNotifications();
-                        rxChar.addEventListener("characteristicvaluechanged", (e) => {
-                            const data = new Uint8Array(e.target.value.buffer);
-                            log("📩 NUS收到: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
-                        });
-                    }
-                    log("🎯 使用NUS裸通道（无需协议前缀）");
-
-                } catch (e1) {
-                    log("⚠ NUS不可用: " + e1.message);
-                    log("🔍 回退到Pybricks命令服务...");
-
-                    const pyb = await server.getPrimaryService(PYB_SERVICE);
-                    txChar = await pyb.getCharacteristic(PYB_COMMAND);
-                    log("✅ Pybricks命令特征就绪");
-                    log("  属性: " + JSON.stringify({
-                        write: txChar.properties.write,
-                        writeWithoutResponse: txChar.properties.writeWithoutResponse,
-                        notify: txChar.properties.notify,
-                    }));
-
-                    if (txChar.properties.notify) {
-                        await txChar.startNotifications();
-                        txChar.addEventListener("characteristicvaluechanged", (e) => {
-                            const data = new Uint8Array(e.target.value.buffer);
-                            log("📩 PYB收到: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
-                        });
-                    }
-                    log("🎯 使用Pybricks命令服务（带协议前缀）");
+                    useNus = true;
+                    log("✅ NUS通道就绪");
+                } catch (e2) {
+                    // NUS不可用，用Pybricks命令特征发数据（需0x06前缀）
+                    log("⚠ NUS不可用，用Pybricks命令特征: " + e2.message);
+                    txChar = pybCmd;
+                    useNus = false;
                 }
 
                 device.addEventListener("gattserverdisconnected", onDisconnect);
@@ -190,16 +179,16 @@
             }
         }
 
-        // txChar 可能是 NUS TX 或 PYB Command，根据实际通道决定发送格式
-        let useNus = true;  // connect()中会更新
-
         async function sendFloor(n) {
             if (!txChar) { log("❌ 未连接"); return; }
             try {
-                const data = new Uint8Array([0x30 + n]);
-                log("📤 发送: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " (" + String.fromCharCode(0x30+n) + " = " + n + "楼)");
+                // NUS: 直接写字节, Pybricks命令: [0x06, 字节]
+                const data = useNus
+                    ? new Uint8Array([0x30 + n])
+                    : new Uint8Array([0x06, 0x30 + n]);
 
-                // NUS 裸通道：直接写原始字节，数据直通stdin
+                log("📤 发送(" + (useNus?"NUS":"PYB") + "): " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " → " + n + "楼");
+
                 if (txChar.properties.writeWithoutResponse) {
                     await txChar.writeValueWithoutResponse(data);
                 } else {
