@@ -8,109 +8,65 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            height: 100vh;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background: #1a1a2e; color: #eee;
+            height: 100vh; height: 100dvh;
+            display: flex; flex-direction: column; align-items: center;
         }
         .status {
-            margin-top: 20px;
-            padding: 10px 24px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 1px;
+            margin-top: 20px; padding: 10px 24px; border-radius: 20px;
+            font-size: 14px; font-weight: 600;
         }
         .status.disconnected { background: #e74c3c; }
         .status.connected    { background: #27ae60; }
-        h1 {
-            margin: 20px 0 10px;
-            font-size: 22px;
-            letter-spacing: 2px;
-            color: #ccc;
-        }
-        .floor-info {
-            font-size: 14px;
-            color: #999;
-            margin-bottom: 20px;
+        h1 { margin: 20px 0 10px; font-size: 22px; color: #ccc; }
+        .info { font-size: 13px; color: #888; margin-bottom: 10px; text-align: center; max-width: 320px; }
+        #log {
+            width: 90%; max-width: 360px; height: 120px;
+            background: #111; color: #0f0; font-size: 11px; font-family: monospace;
+            padding: 8px; border-radius: 8px; overflow-y: auto;
+            margin: 8px 0; white-space: pre-wrap; word-break: break-all;
         }
         .btn-wrap {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 16px;
-            width: 100%;
-            max-width: 320px;
-            padding: 0 30px 40px;
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            gap: 14px; width: 100%; max-width: 320px; padding: 0 30px 30px;
         }
         .btn {
-            flex: 1;
-            min-height: 80px;
-            border: none;
-            border-radius: 16px;
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 4px;
-            color: #fff;
-            cursor: pointer;
+            flex: 1; min-height: 70px; border: none; border-radius: 16px;
+            font-size: 26px; font-weight: 700; letter-spacing: 4px;
+            color: #fff; cursor: pointer;
             transition: transform 0.1s, box-shadow 0.1s;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn:active {
-            transform: scale(0.96);
-            box-shadow: 0 0 30px rgba(255,255,255,0.3);
-        }
-        .btn:disabled {
-            opacity: 0.3;
-            pointer-events: none;
-        }
-        .btn-1f { background: linear-gradient(135deg, #9b59b6, #8e44ad); }  /* 紫色=1F */
-        .btn-2f { background: linear-gradient(135deg, #bdc3c7, #95a5a6); }  /* 白色=2F */
-        .btn-3f { background: linear-gradient(135deg, #2c3e50, #1a1a2e); }  /* 黑色=3F */
-
+        .btn:active { transform: scale(0.96); box-shadow: 0 0 30px rgba(255,255,255,0.3); }
+        .btn:disabled { opacity: 0.3; pointer-events: none; }
+        .btn-1f { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .btn-2f { background: linear-gradient(135deg, #bdc3c7, #95a5a6); }
+        .btn-3f { background: linear-gradient(135deg, #2c3e50, #1a1a2e); }
         .connect-btn {
-            margin-bottom: 10px;
-            padding: 12px 40px;
-            border: 2px solid #3498db;
-            border-radius: 30px;
-            background: transparent;
-            color: #3498db;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            letter-spacing: 1px;
+            padding: 10px 36px; border: 2px solid #3498db; border-radius: 30px;
+            background: transparent; color: #3498db; font-size: 15px; font-weight: 600;
+            cursor: pointer; margin: 5px 0;
         }
         .connect-btn:active { background: #3498db; color: #fff; }
-        .sent-toast {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(39, 174, 96, 0.95);
-            color: #fff;
-            padding: 16px 32px;
-            border-radius: 12px;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 3px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
+        .toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(39,174,96,0.95); color: #fff;
+            padding: 16px 32px; border-radius: 12px;
+            font-size: 24px; font-weight: 700; pointer-events: none;
+            opacity: 0; transition: opacity 0.2s;
         }
-        .sent-toast.show { opacity: 1; }
+        .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
 
     <div class="status disconnected" id="status">未连接</div>
     <h1>🛗 电梯遥控器</h1>
-    <div class="floor-info">先点「连接」按钮配对集线器</div>
+    <div class="info" id="info">打开 F12 → Console 查看调试日志</div>
 
     <button class="connect-btn" id="connectBtn" onclick="connect()">🔗 连接集线器</button>
+
+    <div id="log">等待连接...</div>
 
     <div class="btn-wrap">
         <button class="btn btn-1f" id="btn1" disabled onclick="sendFloor(1)">🟣 1 楼</button>
@@ -118,75 +74,126 @@
         <button class="btn btn-3f" id="btn3" disabled onclick="sendFloor(3)">⚫ 3 楼</button>
     </div>
 
-    <div class="sent-toast" id="toast"></div>
+    <div class="toast" id="toast"></div>
 
     <script>
-        // Pybricks 命令服务 (不是 NUS)
+        // ===== Pybricks BLE 协议 =====
         const PYB_SERVICE = "c5f50001-8280-46da-89f4-6d8051e4aeef";
         const PYB_COMMAND = "c5f50002-8280-46da-89f4-6d8051e4aeef";
 
         let device = null;
         let cmdChar = null;
 
-        async function connect() {
-            try {
-                device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [PYB_SERVICE]
-                });
-
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(PYB_SERVICE);
-                cmdChar = await service.getCharacteristic(PYB_COMMAND);
-
-                device.addEventListener("gattserverdisconnected", onDisconnect);
-
-                setConnected(true);
-                toast("已连接 ✅");
-
-            } catch (e) {
-                alert("连接失败: " + e.message
-                    + "\n\n排障清单："
-                    + "\n1. 集线器程序是否已启动？（按中心键）"
-                    + "\n2. 集线器指示灯是否亮起？"
-                    + "\n3. 手机蓝牙是否打开？"
-                    + "\n4. 必须用 Chrome/Edge 浏览器"
-                    + "\n5. 集线器不要连着 Pybricks IDE");
-            }
+        function log(msg) {
+            console.log("[电梯]", msg);
+            const el = document.getElementById("log");
+            el.textContent += msg + "\n";
+            el.scrollTop = el.scrollHeight;
         }
 
-        async function sendFloor(n) {
-            if (!cmdChar) return;
-            try {
-                // Pybricks 协议：0x06 = 写入 stdin
-                await cmdChar.writeValueWithoutResponse(new Uint8Array([0x06, 0x30 + n]));
-                toast((n === 1 ? "🟣" : n === 2 ? "⚪" : "⚫") + " 去 " + n + " 楼");
-            } catch (e) {
-                alert("发送失败: " + e.message);
-            }
-        }
-
-        function onDisconnect() {
-            setConnected(false);
-            toast("已断开 ❌");
+        function toast(msg) {
+            const t = document.getElementById("toast");
+            t.textContent = msg;
+            t.className = "toast show";
+            clearTimeout(t._tid);
+            t._tid = setTimeout(() => t.className = "toast", 1200);
         }
 
         function setConnected(ok) {
-            const s = document.getElementById("status");
-            s.textContent = ok ? "已连接" : "未连接";
-            s.className = "status " + (ok ? "connected" : "disconnected");
+            document.getElementById("status").textContent = ok ? "已连接" : "未连接";
+            document.getElementById("status").className = "status " + (ok ? "connected" : "disconnected");
             document.getElementById("btn1").disabled = !ok;
             document.getElementById("btn2").disabled = !ok;
             document.getElementById("btn3").disabled = !ok;
             document.getElementById("connectBtn").style.display = ok ? "none" : "block";
         }
 
-        function toast(msg) {
-            const t = document.getElementById("toast");
-            t.textContent = msg;
-            t.className = "sent-toast show";
-            clearTimeout(t._tid);
-            t._tid = setTimeout(() => t.className = "sent-toast", 1200);
+        function onDisconnect() {
+            log("⚠ 集线器断开连接");
+            setConnected(false);
+            toast("已断开");
+        }
+
+        async function connect() {
+            try {
+                log("🔍 正在扫描蓝牙设备...");
+
+                device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [PYB_SERVICE]
+                });
+                log("📱 已选择设备: " + (device.name || "(未知名称)"));
+                log("  设备ID: " + device.id);
+
+                log("🔗 正在建立GATT连接...");
+                const server = await device.gatt.connect();
+                log("✅ GATT连接成功");
+
+                log("🔍 查找Pybricks服务...");
+                const service = await server.getPrimaryService(PYB_SERVICE);
+                log("✅ 找到服务: " + PYB_SERVICE);
+
+                log("🔍 查找命令特征...");
+                cmdChar = await service.getCharacteristic(PYB_COMMAND);
+                log("✅ 找到命令特征: " + PYB_COMMAND);
+                log("  特征属性: " + JSON.stringify({
+                    write: cmdChar.properties.write,
+                    writeWithoutResponse: cmdChar.properties.writeWithoutResponse,
+                    notify: cmdChar.properties.notify,
+                }));
+
+                // 订阅通知（关键！）
+                if (cmdChar.properties.notify) {
+                    log("📡 订阅通知...");
+                    await cmdChar.startNotifications();
+                    cmdChar.addEventListener("characteristicvaluechanged", (e) => {
+                        const data = new Uint8Array(e.target.value.buffer);
+                        log("📩 收到数据: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
+                    });
+                    log("✅ 通知订阅成功");
+                } else {
+                    log("⚠ 命令特征不支持通知");
+                }
+
+                device.addEventListener("gattserverdisconnected", onDisconnect);
+
+                setConnected(true);
+                log("🎉 一切就绪，可以发送指令");
+                toast("已连接 ✅");
+
+            } catch (e) {
+                log("❌ 连接失败: " + e.message);
+                log("   错误类型: " + e.name);
+                alert("连接失败: " + e.message + "\n\n查看Console (F12) 了解更多日志");
+            }
+        }
+
+        async function sendFloor(n) {
+            if (!cmdChar) {
+                log("❌ 未连接，无法发送");
+                return;
+            }
+            try {
+                // Pybricks协议: [长度, 命令, 数据...]
+                // 命令0x06 = write_stdin
+                const data = new Uint8Array([0x03, 0x06, 0x30 + n]);
+                log("📤 发送: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " (目标: " + n + "楼)");
+
+                if (cmdChar.properties.writeWithoutResponse) {
+                    await cmdChar.writeValueWithoutResponse(data);
+                    log("   方式: writeValueWithoutResponse");
+                } else {
+                    await cmdChar.writeValue(data);
+                    log("   方式: writeValue (带响应)");
+                }
+
+                log("✅ 发送完成");
+                toast((n === 1 ? "🟣" : n === 2 ? "⚪" : "⚫") + " 去 " + n + " 楼");
+
+            } catch (e) {
+                log("❌ 发送失败: " + e.message);
+                alert("发送失败: " + e.message);
+            }
         }
     </script>
 </body>
