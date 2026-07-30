@@ -153,19 +153,11 @@
                     log("✅ 握手完成（通知已订阅）");
                 }
 
-                // 第2步：发送走 NUS 裸通道（数据直通stdin，无需协议前缀）
-                try {
-                    log("🔍 第2步: 数据通道 - NUS...");
-                    const nus = await server.getPrimaryService(NUS_SERVICE);
-                    txChar = await nus.getCharacteristic(NUS_TX);
-                    useNus = true;
-                    log("✅ NUS通道就绪");
-                } catch (e2) {
-                    // NUS不可用，用Pybricks命令特征发数据（需0x06前缀）
-                    log("⚠ NUS不可用，用Pybricks命令特征: " + e2.message);
-                    txChar = pybCmd;
-                    useNus = false;
-                }
+                // 第2步：发送用 Pybricks 命令特征（与通知同一通道，stdin协议）
+                //         NUS通道虽然可写但Pybricks不会路由到stdin
+                txChar = pybCmd;
+                useNus = false;
+                log("🎯 使用Pybricks命令特征发送（格式: [0x06, 字节]）");
 
                 device.addEventListener("gattserverdisconnected", onDisconnect);
                 setConnected(true);
