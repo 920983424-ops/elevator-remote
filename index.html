@@ -6,138 +6,84 @@
 <title>电梯遥控器</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#eee;height:100vh;display:flex;flex-direction:column;align-items:center}
-.status{margin-top:16px;padding:8px 20px;border-radius:20px;font-size:14px;font-weight:600}
-.status.dc{background:#e74c3c}.status.ok{background:#27ae60}
-h1{margin:14px 0 6px;font-size:20px;color:#ccc}
-#log{width:94%;max-width:400px;height:200px;background:#111;color:#0f0;font-size:10px;font-family:monospace;padding:6px;border-radius:6px;overflow-y:auto;margin:6px 0;white-space:pre-wrap;word-break:break-all}
-.btn-row{display:flex;gap:10px;margin:6px 0}
-.btn-row button{padding:6px 14px;border-radius:6px;border:none;background:#3498db;color:#fff;font-size:13px;cursor:pointer}
-.btn-wrap{display:flex;gap:12px;width:94%;max-width:400px;padding:0 0 20px}
-.btn{flex:1;min-height:60px;border:none;border-radius:14px;font-size:22px;font-weight:700;color:#fff;cursor:pointer}
-.btn:disabled{opacity:.3;pointer-events:none}
+body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#eee;height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center}
+.status{margin-top:20px;padding:10px 24px;border-radius:20px;font-size:14px;font-weight:600}
+.status.off{background:#e74c3c}.status.on{background:#27ae60}
+h1{margin:20px 0 10px;font-size:22px;color:#ccc}
+.info{font-size:13px;color:#888;margin-bottom:10px}
+.btn-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;width:100%;max-width:320px;padding:0 30px 40px}
+.btn{flex:1;min-height:80px;border:none;border-radius:16px;font-size:28px;font-weight:700;letter-spacing:4px;color:#fff;cursor:pointer;transition:transform .1s}
 .btn:active{transform:scale(.96)}
-.btn-1{background:linear-gradient(135deg,#9b59b6,#8e44ad)}
-.btn-2{background:linear-gradient(135deg,#bdc3c7,#95a5a6)}
-.btn-3{background:linear-gradient(135deg,#2c3e50,#1a1a2e)}
-.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(39,174,96,.95);color:#fff;padding:12px 24px;border-radius:10px;font-size:20px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .2s}
+.btn:disabled{opacity:.3;pointer-events:none}
+.btn-1f{background:linear-gradient(135deg,#9b59b6,#8e44ad)}
+.btn-2f{background:linear-gradient(135deg,#bdc3c7,#95a5a6)}
+.btn-3f{background:linear-gradient(135deg,#2c3e50,#1a1a2e)}
+.cn-btn{padding:10px 36px;border:2px solid #3498db;border-radius:30px;background:transparent;color:#3498db;font-size:15px;font-weight:600;cursor:pointer;margin:5px 0}
+.cn-btn:active{background:#3498db;color:#fff}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(39,174,96,.95);color:#fff;padding:16px 32px;border-radius:12px;font-size:24px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
 </style>
 </head>
 <body>
-<div class="status dc" id="s">未连接</div>
+
+<div class="status off" id="s">未连接</div>
 <h1>🛗 电梯遥控器</h1>
-<button class="btn-row" onclick="connect()" id="connBtn">🔗 连接集线器</button>
-<div id="log">等待...</div>
-<div class="btn-row">
-  <button onclick="testAll()">🧪 全通道测试</button>
-  <button onclick="scanAll()">📡 扫描所有服务</button>
-</div>
+<div class="info">先连蓝牙，再选楼层</div>
+
+<button class="cn-btn" id="cb" onclick="connect()">🔗 连接集线器</button>
+
 <div class="btn-wrap">
-  <button class="btn btn-1" id="b1" disabled onclick="sendCmd(1)">🟣1楼</button>
-  <button class="btn btn-2" id="b2" disabled onclick="sendCmd(2)">⚪2楼</button>
-  <button class="btn btn-3" id="b3" disabled onclick="sendCmd(3)">⚫3楼</button>
+  <button class="btn btn-1f" id="b1" disabled onclick="go(1)">🟣 1 楼</button>
+  <button class="btn btn-2f" id="b2" disabled onclick="go(2)">⚪ 2 楼</button>
+  <button class="btn btn-3f" id="b3" disabled onclick="go(3)">⚫ 3 楼</button>
 </div>
-<div class="toast" id="toast"></div>
+
+<div class="toast" id="t"></div>
 
 <script>
-const PYB_SVC  = "c5f50001-8280-46da-89f4-6d8051e4aeef";
-const PYB_CMD  = "c5f50002-8280-46da-89f4-6d8051e4aeef";
-const NUS_SVC  = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-const NUS_TX   = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-const NUS_RX   = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+const PYB_SVC="c5f50001-8280-46da-89f4-6d8051e4aeef";
+const PYB_CMD="c5f50002-8280-46da-89f4-6d8051e4aeef";
 
-let dev, srv, chars = {};
+let dev,cmd;
 
-function L(m){console.log("[BLE]",m);const e=document.getElementById("log");e.textContent+=m+"\n";e.scrollTop=e.scrollHeight}
-function T(m){const t=document.getElementById("toast");t.textContent=m;t.className="toast show";clearTimeout(t._t);t._t=setTimeout(()=>t.className="toast",1200)}
-function setOk(v){document.getElementById("s").textContent=v?"已连接":"未连接";document.getElementById("s").className="status "+(v?"ok":"dc");document.getElementById("b1").disabled=!v;document.getElementById("b2").disabled=!v;document.getElementById("b3").disabled=!v;document.getElementById("connBtn").style.display=v?"none":"block"}
-
-async function scanAll() {
-  if(!srv){L("请先连接");return}
-  try{
-    const services = await srv.getPrimaryServices();
-    L("=== 发现 "+services.length+" 个服务 ===");
-    for(const svc of services){
-      L("服务: "+svc.uuid);
-      const characteristics = await svc.getCharacteristics();
-      for(const ch of characteristics){
-        L("  特征: "+ch.uuid+" props="+JSON.stringify(ch.properties));
-        chars[ch.uuid] = ch;
-        if(ch.properties.notify){
-          try{
-            await ch.startNotifications();
-            ch.addEventListener("characteristicvaluechanged",(e)=>{
-              const d=new Uint8Array(e.target.value.buffer);
-              L("📩["+ch.uuid.slice(0,8)+"]: "+Array.from(d).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
-            });
-            L("    ✅ 已订阅通知");
-          }catch(e2){L("    ❌ 订阅失败: "+e2.message)}
-        }
-      }
-    }
-    L("=== 扫描完成 ===");
-    if(chars[NUS_TX]) L("💡 NUS_TX 可用");
-    if(chars[PYB_CMD]) L("💡 PYB_CMD 可用");
-  }catch(e){L("❌ 扫描失败: "+e.message)}
+function toast(m){
+  const t=document.getElementById("t");
+  t.textContent=m;t.className="toast show";
+  clearTimeout(t._x);t._x=setTimeout(()=>t.className="toast",1200);
 }
 
-async function testAll(){
-  if(!srv){L("请先连接");return}
-  const byte = 0x32; // '2'
-  const tests = [
-    {name:"NUS裸写",       uuid:NUS_TX, data:[byte],              desc:"NUS直接写字节"},
-    {name:"NUS+0x06前缀",  uuid:NUS_TX, data:[0x06,byte],         desc:"NUS带stdin前缀"},
-    {name:"PYB裸写",       uuid:PYB_CMD,data:[byte],              desc:"PYB命令直接字节"},
-    {name:"PYB+0x06前缀",  uuid:PYB_CMD,data:[0x06,byte],         desc:"PYB命令+stdin前缀"},
-    {name:"PYB+0x06+回车", uuid:PYB_CMD,data:[0x06,byte,0x0A],    desc:"PYB命令+换行"},
-  ];
-
-  for(const t of tests){
-    const ch = chars[t.uuid];
-    if(!ch){L("⏭ 跳过 "+t.name+" (特征不可用)");continue}
-    try{
-      const arr = new Uint8Array(t.data);
-      L("📤 ["+t.name+"] "+t.desc+": "+Array.from(arr).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" "));
-      if(ch.properties.writeWithoutResponse){
-        await ch.writeValueWithoutResponse(arr);
-      }else{
-        await ch.writeValue(arr);
-      }
-      L("   ✅ 写入成功");
-    }catch(e){L("   ❌ "+e.message)}
-    await new Promise(r=>setTimeout(r,300));
-  }
-  L("=== 全通道测试完成 ===");
-}
-
-async function sendCmd(n){
-  // 默认用法：PYB命令特征 + 0x06前缀
-  const ch = chars[PYB_CMD];
-  if(!ch){L("❌ PYB命令特征不可用，请先扫描");return}
-  try{
-    const arr = new Uint8Array([0x06, 0x30+n]);
-    L("📤 发送: "+Array.from(arr).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ")+" → "+n+"楼");
-    if(ch.properties.writeWithoutResponse){await ch.writeValueWithoutResponse(arr)}
-    else{await ch.writeValue(arr)}
-    L("✅ 完成");
-    T((n==1?"🟣":n==2?"⚪":"⚫")+" 去 "+n+" 楼");
-  }catch(e){L("❌ "+e.message)}
+function setOk(v){
+  document.getElementById("s").textContent=v?"已连接":"未连接";
+  document.getElementById("s").className="status "+(v?"on":"off");
+  document.getElementById("b1").disabled=!v;
+  document.getElementById("b2").disabled=!v;
+  document.getElementById("b3").disabled=!v;
+  document.getElementById("cb").style.display=v?"none":"block";
 }
 
 async function connect(){
   try{
-    L("🔍 扫描设备...");
-    dev = await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[PYB_SVC,NUS_SVC]});
-    L("📱 "+ (dev.name||"未知"));
-    srv = await dev.gatt.connect();
-    L("✅ GATT连接成功");
-    chars = {};
-    dev.addEventListener("gattserverdisconnected",()=>{L("⚠ 断开");setOk(false)});
+    dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[PYB_SVC]});
+    const srv=await dev.gatt.connect();
+    const pyb=await srv.getPrimaryService(PYB_SVC);
+    cmd=await pyb.getCharacteristic(PYB_CMD);
+
+    // 订阅通知（握手）
+    if(cmd.properties.notify) await cmd.startNotifications();
+
+    dev.addEventListener("gattserverdisconnected",()=>{setOk(false);toast("已断开")});
     setOk(true);
-    L("✅ 连接成功 — 请点击「扫描所有服务」");
-    T("已连接 ✅");
-  }catch(e){L("❌ "+e.message)}
+    toast("已连接 ✅");
+  }catch(e){alert("连接失败: "+e.message)}
+}
+
+async function go(n){
+  if(!cmd)return;
+  try{
+    // Pybricks命令特征 + [0x06, 字节] → stdin ✅
+    await cmd.writeValue(new Uint8Array([0x06,0x30+n]));
+    toast((n==1?"🟣":n==2?"⚪":"⚫")+" 去 "+n+" 楼");
+  }catch(e){alert("发送失败: "+e.message)}
 }
 </script>
 </body>
