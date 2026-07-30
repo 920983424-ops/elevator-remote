@@ -3,39 +3,232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>电梯遥控器</title>
+<title>空中花园 · 观光电梯</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#eee;height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center}
-.status{margin-top:20px;padding:10px 24px;border-radius:20px;font-size:14px;font-weight:600}
-.status.off{background:#e74c3c}.status.on{background:#27ae60}
-h1{margin:20px 0 10px;font-size:22px;color:#ccc}
-.info{font-size:13px;color:#888;margin-bottom:10px}
-.btn-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;width:100%;max-width:320px;padding:0 30px 40px}
-.btn{flex:1;min-height:80px;border:none;border-radius:16px;font-size:28px;font-weight:700;letter-spacing:4px;color:#fff;cursor:pointer;transition:transform .1s}
-.btn:active{transform:scale(.96)}
-.btn:disabled{opacity:.3;pointer-events:none}
-.btn-1f{background:linear-gradient(135deg,#9b59b6,#8e44ad)}
-.btn-2f{background:linear-gradient(135deg,#bdc3c7,#95a5a6)}
-.btn-3f{background:linear-gradient(135deg,#2c3e50,#1a1a2e)}
-.cn-btn{padding:10px 36px;border:2px solid #3498db;border-radius:30px;background:transparent;color:#3498db;font-size:15px;font-weight:600;cursor:pointer;margin:5px 0}
-.cn-btn:active{background:#3498db;color:#fff}
-.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(39,174,96,.95);color:#fff;padding:16px 32px;border-radius:12px;font-size:24px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .2s}
-.toast.show{opacity:1}
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  body{
+    font-family:'Noto Serif SC',serif;
+    background:linear-gradient(180deg,#0d1f14 0%,#1a3c2a 30%,#2d5a3f 60%,#1a3c2a 100%);
+    color:#f5f0e8;
+    min-height:100vh;min-height:100dvh;
+    display:flex;flex-direction:column;align-items:center;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  .stars{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    pointer-events:none;z-index:0;
+  }
+  .star{
+    position:absolute;background:#ffd700;border-radius:50%;
+    animation:twinkle 3s infinite alternate;
+  }
+  @keyframes twinkle{0%{opacity:.2}100%{opacity:.8}}
+
+  .main-content{
+    position:relative;z-index:1;
+    width:100%;max-width:400px;
+    display:flex;flex-direction:column;align-items:center;
+    padding:0 24px 30px;
+  }
+
+  .header{
+    text-align:center;margin-top:24px;margin-bottom:12px;
+  }
+  .header .icon-row{
+    font-size:40px;letter-spacing:6px;
+    animation:float 3s ease-in-out infinite;
+  }
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+  .header h1{
+    font-size:28px;font-weight:700;letter-spacing:4px;
+    background:linear-gradient(180deg,#ffd700,#c9a96e);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+    margin:10px 0 4px;
+  }
+  .header .subtitle{
+    font-size:12px;color:#8ba888;letter-spacing:3px;
+  }
+
+  .connect-area{
+    margin:14px 0;width:100%;
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .status-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:7px 22px;border-radius:20px;
+    font-size:13px;font-weight:700;letter-spacing:1px;
+    margin-bottom:10px;transition:all .3s;
+  }
+  .status-badge.off{
+    background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.35);
+    color:#e74c3c;
+  }
+  .status-badge.on{
+    background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.35);
+    color:#27ae60;
+  }
+  .status-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:currentColor;animation:pulse 1.5s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .cn-btn{
+    padding:12px 44px;
+    border:1.5px solid #c9a96e;border-radius:30px;
+    background:rgba(201,169,110,.08);
+    color:#c9a96e;font-size:14px;font-weight:600;
+    cursor:pointer;letter-spacing:2px;
+    font-family:'Noto Serif SC',serif;
+    transition:all .3s;
+  }
+  .cn-btn:hover{background:rgba(201,169,110,.18)}
+  .cn-btn:active{transform:scale(.96);background:rgba(201,169,110,.25)}
+
+  .floor-title{
+    font-size:14px;color:#8ba888;letter-spacing:2px;
+    margin:18px 0 12px;text-align:center;
+  }
+  .floor-cards{
+    width:100%;display:flex;flex-direction:column;gap:12px;
+  }
+  .floor-card{
+    position:relative;overflow:hidden;
+    border-radius:16px;padding:20px 18px;
+    cursor:pointer;
+    transition:all .2s;
+    border:1px solid transparent;
+    display:flex;align-items:center;gap:14px;
+  }
+  .floor-card:active{transform:scale(.97)}
+  .floor-card:disabled{opacity:.35;pointer-events:none;transform:none}
+
+  /* 1F - 紫色 */
+  .card-1f{
+    background:linear-gradient(135deg,rgba(147,112,219,.12),rgba(120,80,200,.08));
+    border-color:rgba(147,112,219,.25);
+  }
+  .card-1f .floor-num{color:#b794f4}
+  .card-1f .floor-name{color:#c9a0f6}
+
+  /* 2F - 白色 */
+  .card-2f{
+    background:linear-gradient(135deg,rgba(245,240,232,.08),rgba(220,215,205,.06));
+    border-color:rgba(245,240,232,.2);
+  }
+  .card-2f .floor-num{color:#f5f0e8}
+  .card-2f .floor-name{color:#faf5ee}
+
+  /* 3F - 深灰 */
+  .card-3f{
+    background:linear-gradient(135deg,rgba(60,60,70,.15),rgba(30,30,40,.1));
+    border-color:rgba(140,140,160,.2);
+  }
+  .card-3f .floor-num{color:#9aa0c0}
+  .card-3f .floor-name{color:#b0b5d0}
+
+  .floor-num{
+    font-size:40px;font-weight:700;width:44px;text-align:center;flex-shrink:0;
+  }
+  .floor-info{flex:1}
+  .floor-name{font-size:17px;font-weight:700;letter-spacing:2px;margin-bottom:3px}
+  .floor-tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;
+    letter-spacing:1px;margin-bottom:4px;
+  }
+  .card-1f .floor-tag{background:rgba(147,112,219,.2);color:#b794f4}
+  .card-2f .floor-tag{background:rgba(245,240,232,.15);color:#ddd8d0}
+  .card-3f .floor-tag{background:rgba(140,140,160,.15);color:#9aa0c0}
+
+  .floor-desc{font-size:11px;color:#8ba888;letter-spacing:1px}
+
+  .floor-arrow{font-size:18px;color:#c9a96e;opacity:.5}
+
+  .hint{
+    text-align:center;font-size:11px;color:#6a8a6a;
+    letter-spacing:1px;margin-top:20px;
+  }
+  .footer{
+    font-size:10px;color:#4a6a4a;letter-spacing:2px;
+    margin-top:14px;padding:0 0 8px;text-align:center;
+  }
+
+  .toast{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(13,31,20,.96);color:#ffd700;
+    padding:14px 28px;border-radius:12px;
+    font-size:19px;font-weight:700;letter-spacing:2px;
+    pointer-events:none;opacity:0;transition:opacity .3s;
+    z-index:10;border:1px solid #c9a96e;
+  }
+  .toast.show{opacity:1}
 </style>
 </head>
 <body>
 
-<div class="status off" id="s">未连接</div>
-<h1>🛗 电梯遥控器</h1>
-<div class="info">先连蓝牙，再选楼层</div>
+<div class="stars" id="stars"></div>
 
-<button class="cn-btn" id="cb" onclick="connect()">🔗 连接集线器</button>
+<div class="main-content">
 
-<div class="btn-wrap">
-  <button class="btn btn-1f" id="b1" disabled onclick="go(1)">🟣 1 楼</button>
-  <button class="btn btn-2f" id="b2" disabled onclick="go(2)">⚪ 2 楼</button>
-  <button class="btn btn-3f" id="b3" disabled onclick="go(3)">⚫ 3 楼</button>
+  <div class="header">
+    <div class="icon-row">🏛️🌿✨</div>
+    <h1>空中花园</h1>
+    <div class="subtitle">HANGING GARDENS · 观光电梯 · FLL UNEARTHED</div>
+  </div>
+
+  <div class="connect-area">
+    <div class="status-badge off" id="badge">
+      <span class="status-dot"></span>
+      <span id="badgeText">未连接</span>
+    </div>
+    <button class="cn-btn" id="cb" onclick="connect()">✦ 连接集线器 ✦</button>
+  </div>
+
+  <div class="floor-title">— 选择楼层 —</div>
+
+  <div class="floor-cards">
+    <!-- 1F -->
+    <button class="floor-card card-1f" id="b1" disabled onclick="go(1)">
+      <span class="floor-num">1</span>
+      <span class="floor-info">
+        <span class="floor-tag">古人的智慧</span>
+        <div class="floor-name">追光花圃 &amp; 螺旋引水</div>
+        <div class="floor-desc">阿基米德螺旋泵水 · 花圃追光旋转</div>
+      </span>
+      <span class="floor-arrow">&#9654;</span>
+    </button>
+
+    <!-- 2F -->
+    <button class="floor-card card-2f" id="b2" disabled onclick="go(2)">
+      <span class="floor-num">2</span>
+      <span class="floor-info">
+        <span class="floor-tag">今日的创造</span>
+        <div class="floor-name">智能精准灌溉</div>
+        <div class="floor-desc">颜色识别花圃需水 · 旋转阀门精准分配</div>
+      </span>
+      <span class="floor-arrow">&#9654;</span>
+    </button>
+
+    <!-- 3F -->
+    <button class="floor-card card-3f" id="b3" disabled onclick="go(3)">
+      <span class="floor-num">3</span>
+      <span class="floor-info">
+        <span class="floor-tag">未来的能源</span>
+        <div class="floor-name">太阳能 &amp; 观星台</div>
+        <div class="floor-desc">绿色能源供电 · 天文监测定农时</div>
+      </span>
+      <span class="floor-arrow">&#9654;</span>
+    </button>
+  </div>
+
+  <div class="hint">连接集线器后选择楼层，电梯自动运行</div>
+  <div class="footer">逐光考古队 · 空中花园 · UNEARTHED</div>
 </div>
 
 <div class="toast" id="t"></div>
@@ -46,15 +239,32 @@ const PYB_CMD="c5f50002-8280-46da-89f4-6d8051e4aeef";
 
 let dev,cmd;
 
+(function(){
+  const c=document.getElementById("stars");
+  for(let i=0;i<35;i++){
+    const s=document.createElement("div");
+    s.className="star";
+    s.style.cssText=`
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;
+      animation-delay:${Math.random()*3}s;
+      animation-duration:${2+Math.random()*4}s;
+    `;
+    c.appendChild(s);
+  }
+})();
+
 function toast(m){
   const t=document.getElementById("t");
   t.textContent=m;t.className="toast show";
-  clearTimeout(t._x);t._x=setTimeout(()=>t.className="toast",1200);
+  clearTimeout(t._x);t._x=setTimeout(()=>t.className="toast",1500);
 }
 
 function setOk(v){
-  document.getElementById("s").textContent=v?"已连接":"未连接";
-  document.getElementById("s").className="status "+(v?"on":"off");
+  const badge=document.getElementById("badge");
+  const text=document.getElementById("badgeText");
+  if(v){badge.className="status-badge on";text.textContent="花园在线"}
+  else{badge.className="status-badge off";text.textContent="未连接"}
   document.getElementById("b1").disabled=!v;
   document.getElementById("b2").disabled=!v;
   document.getElementById("b3").disabled=!v;
@@ -67,29 +277,19 @@ async function connect(){
     const srv=await dev.gatt.connect();
     const pyb=await srv.getPrimaryService(PYB_SVC);
     cmd=await pyb.getCharacteristic(PYB_CMD);
-
-    // 订阅通知（握手+接收回显）
-    if(cmd.properties.notify){
-      await cmd.startNotifications();
-      cmd.addEventListener("characteristicvaluechanged",(e)=>{
-        const d=new Uint8Array(e.target.value.buffer);
-        const hex=Array.from(d).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ");
-        console.log("[HUB] "+hex+" | "+new TextDecoder().decode(d.filter(b=>b>=32&&b<127)));
-      });
-    }
-
-    dev.addEventListener("gattserverdisconnected",()=>{setOk(false);toast("已断开")});
+    if(cmd.properties.notify) await cmd.startNotifications();
+    dev.addEventListener("gattserverdisconnected",()=>{setOk(false);toast("连接断开")});
     setOk(true);
-    toast("已连接 ✅");
+    toast("花园之门已开 🌿");
   }catch(e){alert("连接失败: "+e.message)}
 }
 
 async function go(n){
   if(!cmd)return;
   try{
-    // Pybricks命令特征 + [0x06, 字节] → stdin ✅
     await cmd.writeValue(new Uint8Array([0x06,0x30+n]));
-    toast((n==1?"🟣":n==2?"⚪":"⚫")+" 去 "+n+" 楼");
+    const m=["","追光花圃 · 第1层","精准灌溉 · 第2层","太阳能观星台 · 第3层"];
+    toast(m[n]);
   }catch(e){alert("发送失败: "+e.message)}
 }
 </script>
