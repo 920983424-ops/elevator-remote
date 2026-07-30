@@ -174,25 +174,18 @@
                 return;
             }
             try {
-                // Pybricks协议: [长度, 命令, 数据...]
-                // 命令0x06 = write_stdin
-                const data = new Uint8Array([0x03, 0x06, 0x30 + n]);
-                log("📤 发送: " + Array.from(data).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " (目标: " + n + "楼)");
+                // Pybricks写stdin: [0x06, 数据字节] (不需要长度头)
+                const cmd = new Uint8Array([0x06, 0x30 + n]);
+                log("📤 发送: " + Array.from(cmd).map(b=>"0x"+b.toString(16).padStart(2,"0")).join(" ") + " (目标: " + n + "楼)");
 
-                if (cmdChar.properties.writeWithoutResponse) {
-                    await cmdChar.writeValueWithoutResponse(data);
-                    log("   方式: writeValueWithoutResponse");
-                } else {
-                    await cmdChar.writeValue(data);
-                    log("   方式: writeValue (带响应)");
-                }
-
+                // 此特征只支持 writeValue (带响应)，不支持无响应写入
+                await cmdChar.writeValue(cmd);
                 log("✅ 发送完成");
+
                 toast((n === 1 ? "🟣" : n === 2 ? "⚪" : "⚫") + " 去 " + n + " 楼");
 
             } catch (e) {
                 log("❌ 发送失败: " + e.message);
-                alert("发送失败: " + e.message);
             }
         }
     </script>
